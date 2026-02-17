@@ -33,12 +33,13 @@ jobs:
         with:
           java-version: '11'
           distribution: 'temurin' 
-      - name: wait for MySQL
-        run: |
-          echo "Waiting for MySQL to be ready..."
-          until mysqladmin ping -h "mysql" --silent; do
-            sleep 5
-          done
+      ### - name: wait for MySQL
+      ###  run: |
+      ###    echo "Waiting for MySQL to be ready..."
+      ###    until mysqladmin ping -h "mysql" --silent; do
+      ###      sleep 5
+      ###    done 
+      
       - name: Build & Test
         run: ./mvnw clean install
 
