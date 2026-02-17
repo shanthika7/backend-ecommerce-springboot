@@ -2,50 +2,86 @@ name: CI Pipeline
 
 on:
   push:
-    branches: 
+    branches:
       - github-actions-pipeline
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
+    # MySQL runs as a Docker "service container" that GitHub Actions starts for you.
     services:
       mysql:
         image: mysql:8
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: fullstack
+          # MYSQL_ROOT_HOST: '%'  # (optional) only needed if you create extra users that connect from non-local hosts
+        # IMPORTANT: Healthcheck must use TCP and credentials on MySQL 8
         options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
+          --health-cmd="mysqladmin --protocol=TCP ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=30
+        # No ports mapping is required for jobs to reach the service container.
 
     env:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/fullstack
+      # Use the service hostname "mysql" from within the job
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/fullstack?useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup JDK 11
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'temurin'
-      - name: Install MYSQL Client
-        run: sudo apt-get update && sudo apt-get install -y mysql-client
-      - name: Wait for MySQL
+
+      - name: Install MySQL Client
+        shell: bash
         run: |
-          echo "Waiting for MySQL..."
-          until mysqladmin ping -h mysql -P 3306 --silent; do
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y mysql-client
+
+      - name: Wait for MySQL (max 2 min, TCP, with diagnostics)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "MySQL client:" && mysql --version || true
+
+          HOST="mysql"
+          PORT="3306"
+          USER="root"
+          PASS="root"
+
+          for i in {1..24}; do
+            echo "[$(date +%T)] Pinging ${HOST}:${PORT} (try $i/24)"
+            if mysqladmin --protocol=TCP ping -h "$HOST" -P "$PORT" -u"$USER" -p"$PASS" --connect-timeout=2 --silent; then
+              echo "MySQL is ready at ${HOST}:${PORT}"
+              exit 0
+            fi
             sleep 5
           done
 
+          echo "ERROR: MySQL did not become ready within 2 minutes."
+          echo "Dumping recent MySQL service logs for diagnosis:"
+          docker ps -a || true
+          docker logs $(docker ps -aqf "name=mysql") | tail -n 200 || true
+          exit 1
+
       - name: Build & Test
         run: ./mvnw clean verify
+
+      - name: Dump MySQL logs on failure
+        if: failure()
+        run: |
+          docker ps -a || true
+          docker logs $(docker ps -aqf "name=mysql") | tail -n 200 || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -59,7 +95,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download artifact from test
         uses: actions/download-artifact@v4
@@ -68,7 +104,7 @@ jobs:
           path: target/
 
       - name: Set up JDK 11
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'temurin'
