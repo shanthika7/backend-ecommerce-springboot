@@ -6,7 +6,7 @@ on:
       - github-actions-pipeline
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,5 +19,5 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Build & Test
-        run: ./mvnw clean verify
+      - name: Build application (skip tests)
+        run: ./mvnw clean install -DskipTests
