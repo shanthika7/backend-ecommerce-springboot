@@ -1,5 +1,5 @@
 # Step1: Use an official Java runtime as a parent image
-FROM openjdk:11-jre
+FROM eclipse-temurin:11-jre
 
 #Step 2: Set the working directory inside the container
 WORKDIR /app
