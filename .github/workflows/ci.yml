@@ -38,7 +38,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: termurin
+          distribution: temurin
           java-version: '17'
 
       - name: Download JAR
