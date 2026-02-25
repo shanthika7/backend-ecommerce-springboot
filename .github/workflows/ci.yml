@@ -20,7 +20,42 @@ jobs:
           java-version: '17'
 
       - name: Build application
-        run: ./mvnw clean install
+        run: ./mvnw clean install -DskipTests
+
+      - name: Upload JAR
+        uses: actions/upload-artefact@v3 
+        with: 
+          name: backend-jar                  # give a name to artifact
+          path: target/*.jar                 # upload the JAR file
+    
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: termurin
+          java-version: '17'
+
+      - name: Download JAR
+        uses: actions/download-artefact@v3
+        with:
+          name: backend-jar
+          path: target/
+
+      - name: Run tests
+        run: ./mvnw test
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: List files in target folder
         run: ls -la target/ 
