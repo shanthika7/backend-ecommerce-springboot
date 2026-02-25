@@ -23,7 +23,7 @@ jobs:
         run: ./mvnw clean install -DskipTests
 
       - name: Upload JAR
-        uses: actions/upload-artefact@v3 
+        uses: actions/upload-artifact@v3 
         with: 
           name: backend-jar                  # give a name to artifact
           path: target/*.jar                 # upload the JAR file
@@ -42,7 +42,7 @@ jobs:
           java-version: '17'
 
       - name: Download JAR
-        uses: actions/download-artefact@v3
+        uses: actions/download-artifact@v3
         with:
           name: backend-jar
           path: target/
